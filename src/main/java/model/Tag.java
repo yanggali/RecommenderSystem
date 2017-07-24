@@ -3,7 +3,7 @@
 // (powered by Fernflower decompiler)
 //
 
-package Model;
+package model;
 
 import java.util.ArrayList;
 import java.util.List;

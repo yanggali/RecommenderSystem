@@ -1,6 +1,7 @@
 package utils;
 
-import Model.Movie;
+import algorithms.Tensor_initial;
+import model.Movie;
 
 import java.util.*;
 
@@ -16,6 +17,7 @@ public class CalSimilarity {
     public static String movie_tags = "E:\\ADA_Project\\RecommenderSystem\\data\\movieContent\\movie_tags.dat";
     public static String book_tags = "E:\\ADA_Project\\RecommenderSystem\\src\\main\\resources\\doubanset\\books.dat";
     public static String artist_tags = System.getProperty("user.dir")+"/data/lastfm/artist_tag.dat";
+    public static float[][] movieSimMatrix;
     public static Map<Integer,String> idToIndex = new HashMap<>();
     public static Map<String, Movie> movieMap = new HashMap<>();
 
@@ -28,6 +30,22 @@ public class CalSimilarity {
     public static Map<String,Integer> directorIndex;
     public static Map<String,Integer> genreIndex;
     public static Map<String,Integer> tagIndex;
+    //初始化电影相似度矩阵
+    public static void initialMovieSim(String filepath){
+        List<String> fileList = FileIO.readFileByLines(filepath);
+        int len = fileList.size();
+        movieSimMatrix = new float[len][len];
+        int i=0;
+        for (String line : fileList) {
+            String[] lineList = line.split(" ");
+            int j=0;
+            for (String str : lineList) {
+                movieSimMatrix[i][j] = Float.parseFloat(lineList[j]);
+                j++;
+            }
+            i++;
+        }
+    }
     //初始化艺术家内容
     public static void initialArtists(){
         List<String> list = FileIO.readFileByLines(artist_tags);
@@ -245,6 +263,15 @@ public class CalSimilarity {
             }else {
                 map.put(movieEntry.getKey(),sim);
             }
+        }
+        return map;
+    }
+    //根据张量计算的内容相似度
+    public static Map<String, Float> similarityListByTensor(String aId) {
+        Map<String,Float> map = new HashMap<>();
+        float[] array= movieSimMatrix[Tensor_initial.movieToIndex.get(aId)-1];
+        for(int i=0;i < array.length;i++){
+            map.put(Tensor_initial.indexToMovie.get(i+1),array[i]);
         }
         return map;
     }

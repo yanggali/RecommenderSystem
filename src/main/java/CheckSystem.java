@@ -3,8 +3,8 @@
 // (powered by Fernflower decompiler)
 //
 
-import Model.RsItem;
-import Model.User;
+import model.RsItem;
+import model.User;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;

@@ -224,11 +224,9 @@ public class BayesScoring {
      */
     public static void getItemScoreByContent(String userId,Map<String,Float> itemScoreMap){
         for (String item : usermap.get(userId).getItemsByItemTag()) {
-            Map<String,Float> itemSimMap = CalSimilarity.similarityList(item);
-            //System.out.println(itemSimMap.size());
+            //Map<String,Float> itemSimMap = CalSimilarity.similarityList(item);
+            Map<String,Float> itemSimMap = CalSimilarity.similarityListByTensor(item);
             for (Map.Entry<String, Float> itemEntry : itemSimMap.entrySet()) {
-//                float weight = getWeight(userId,item.getKey());
-//                System.out.println("用户"+userId+"与物品"+item.getKey()+"的权重是:"+weight);
                 if (!itemScoreMap.containsKey(itemEntry.getKey())){
                     itemScoreMap.put(itemEntry.getKey(),itemEntry.getValue());
                 }else {
@@ -237,6 +235,7 @@ public class BayesScoring {
             }
         }
     }
+
     /**
      * 模型三
      * 根据所有关系求Item及其评分
@@ -374,23 +373,6 @@ public class BayesScoring {
                 itemScoreMap.put(entry.getKey(),entry.getValue()+itemScoreMap.get(entry.getKey()));
             }
         }
-
-
-//        for (Map.Entry<String, Float> entry : itemScoreMap.entrySet()) {
-//            itemScoreMap.put(entry.getKey(), weight * entry.getValue());
-//        }
-//        for (String item : usermap.get(userId).getItemsByItemTag()) {
-//            float currentScore = itemscore.getOrDefault(item, 0.57223f);
-//            //根据item的相似度计算item
-//            Map<String, Float> itemSimMap = CalSimilarity.similarityList(item);
-//            for (Map.Entry<String, Float> itemEntry : itemSimMap.entrySet()) {
-//                if (!itemScoreMap.containsKey(itemEntry.getKey())) {
-//                    itemScoreMap.put(itemEntry.getKey(), (1-weight)*itemEntry.getValue());
-//                } else {
-//                    itemScoreMap.put(itemEntry.getKey(), itemScoreMap.get(itemEntry.getKey()) + (1-weight)*itemEntry.getValue());
-//                }
-//            }
-//        }
         return ItemSimilarity.sortByValue(itemScoreMap);
     }
     public static Map<String, Float> getItemScoreofModel3(String userId, Map<String, Float> itemScoreMap) {
@@ -398,9 +380,9 @@ public class BayesScoring {
         getItemScoreofModel1(userId, itemScoreMap);
         normMap(itemScoreMap,0.5f);
         Map<String,Float> simMap = new HashMap<>();
-        //getItemScoreByContent(userId,simMap);
+        getItemScoreByContent(userId,simMap);
         //getArtistScoreByContent(userId,simMap);
-        getBookScoreByContent(userId,simMap);
+        //getBookScoreByContent(userId,simMap);
         normMap(simMap,0.5f);
         for (Map.Entry<String, Float> entry : simMap.entrySet()) {
             if (!itemScoreMap.containsKey(entry.getKey())){
@@ -560,52 +542,7 @@ public class BayesScoring {
         return itemsscore;
     }
 
-    /**
-     * @param userid
-     * @return user-item(打过标签的Item)-user-items之后得到的物品及评分集合
-     */
-//    public static Map<String,Float> getItemscoreByItemTag(String userid)
-//    {
-//        Map<String, Float> itemMap = new HashMap<>();
-//        UserRecord userRecord = usermap.get(userid);
-//        Set<ItemTag> itemtags = userRecord.getItemTags();
-//        for (ItemTag it:itemtags)
-//        {
-//            float itscore = itemscore.get(it.getItem()) == null ? 1 / 2 : itemscore.get(it.getItem());
-//            for (UserRecord user:usermap.values())
-//            {
-//                if (!user.equals(userid)&&user.isContainItem(it.getItem()))
-//                {
-//                    System.out.println("根据"+it.getItem()+"找到用户"+user.getUserid());
-//                    //计算该用户所有的item评分
-//                    for(ItemTag otherit:user.getItemTags())
-//                    {
-//                        float otheritscore = itemscore.get(otherit.getItem()) == null ? 1 / 2 : itemscore.get(otherit.getItem());
-//                        if (!itemMap.containsKey(otherit.getItem()))
-//                        {
-//                            System.out.println("计算物品"+otherit.getItem()+"的得分为:"+itscore*otheritscore);
-//                            itemMap.put(otherit.getItem(),itscore*otheritscore);
-//                        }
-//                        else
-//                        {
-//                            float score = itemMap.get(otherit.getItem()) + otheritscore * itscore;
-//                            System.out.println("计算已存在物品"+otherit.getItem()+"的得分为:"+score);
-//                            itemMap.put(otherit.getItem(),score);
-//                        }
-//                    }
-//                }
-//                //}
-//            }
-//
-//        }
-//        Set<String> items = usermap.get(userid).getItemsByItemTag();
-//        for (String item:items){
-//            if (itemMap.containsKey(item)){
-//                itemMap.remove(item);
-//            }
-//        }
-//        return itemMap;
-//    }
+
     /**
      * 问题！！！三步之后得到的物品太多
      * @param userid 待推荐用户id

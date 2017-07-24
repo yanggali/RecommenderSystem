@@ -3,10 +3,10 @@
 // (powered by Fernflower decompiler)
 //
 
-import Model.Item;
-import Model.RsItem;
-import Model.Tag;
-import Model.User;
+import model.Item;
+import model.RsItem;
+import model.Tag;
+import model.User;
 
 import java.util.*;
 import java.util.Map.Entry;

@@ -1,6 +1,6 @@
 //package algorithms;
 //
-//import Model.GraphModel;
+//import model.GraphModel;
 //import java.util.ArrayList;
 //import java.util.HashMap;
 //

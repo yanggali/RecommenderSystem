@@ -5,7 +5,7 @@ package algorithms;
  * Version 1.0
  */
 
-import Model.Movie;
+import model.Movie;
 import utils.CalSimilarity;
 import utils.FileIO;
 
@@ -19,6 +19,7 @@ import java.util.Map;
 public class Tensor_initial {
     public static Map<String, Movie> movieMapList = new HashMap<>();
     public static Map<String, Integer> movieToIndex = new HashMap<>();
+    public static Map<Integer,String> indexToMovie = new HashMap<>();
     public static Map<String, Integer> actorToIndex = new HashMap<>();
     public static Map<String, Integer> countryToIndex = new HashMap<>();
     public static Map<String, Integer> directorToIndex = new HashMap<>();
@@ -36,19 +37,23 @@ public class Tensor_initial {
 //        System.out.println(movieToIndex.size()+"\n"+directorToIndex.size()+"\n"+actorToIndex.size()
 //                +"\n"+countryToIndex.size()+"\n"+genreToIndex.size()+"\n"+tagToIndex.size());
 //        writeFourWay(fourway);
+        indexIntial();
+    }
+    public static void indexIntial(){
         CalSimilarity.initialieMovies();
         movieList = CalSimilarity.movieMap;
         System.out.println(movieList.size());
-        String filepath = System.getProperty("user.dir")+"\\data\\movieContent\\movieIndex.dat";
-        movieSubList = getSubList(filepath,movieList);
+        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex.dat";
+        movieSubList = getSubList(filepath, movieList);
         System.out.println(movieSubList.size());
-        String outpath = System.getProperty("user.dir")+"\\data\\movieContent\\tensorIndex.dat";
+        String outpath = System.getProperty("user.dir")+"\\data\\movieContent\\subTensorIndex1.dat";
         initialSubIndex(movieSubList,outpath);
     }
     //初始化各个属性的下标
     public static void initialSubIndex(Map<String,Movie> movieMap,String filepath){
         for (Map.Entry<String, Movie> movieEntry : movieMap.entrySet()) {
             movieToIndex.put(movieEntry.getKey(),movieToIndex.size()+1);
+            indexToMovie.put(movieToIndex.size()+1,movieEntry.getKey());
             for (String actor : movieEntry.getValue().getActors()) {
                 if (!actorToIndex.containsKey(actor)){
                     actorToIndex.put(actor,actorToIndex.size()+1);
@@ -78,10 +83,19 @@ public class Tensor_initial {
                             +"类型数："+genreToIndex.size()+"\n"
                             +"国家数："+countryToIndex.size()+"\n"
                             +"标签数："+tagToIndex.size());
-        StringBuffer str = new StringBuffer();
+        StringBuilder str = new StringBuilder();
         for (Map.Entry<String, Movie> movieEntry : movieSubList.entrySet()) {
-            for (String tag : movieEntry.getValue().getTags()) {
-                str.append(movieToIndex.get(movieEntry.getKey())+" "+directorToIndex.get(movieEntry.getValue().getDirector())+" "+tagToIndex.get(tag)+"\n");
+            for (String actor : movieEntry.getValue().getActors()) {
+                for (String genre : movieEntry.getValue().getGeneres()) {
+                    for (String tag : movieEntry.getValue().getTags()) {
+                        str.append(movieToIndex.get(movieEntry.getKey()) + " "
+                                + actorToIndex.get(actor) + " " + directorToIndex.get(movieEntry.getValue().getDirector())
+                                + " " + genreToIndex.get(genre) + " " + countryToIndex.get(movieEntry.getValue().getCountry())
+                                + " " + tagToIndex.get(tag)+"\n");
+                    }
+                }
+
+
             }
         }
         FileIO.appendToFile(filepath,str.toString());
@@ -89,8 +103,11 @@ public class Tensor_initial {
     public static Map<String,Movie> getSubList(String filepath,Map<String,Movie> MovieMap){
         Map<String,Movie> submovieMap = new HashMap<>();
         List<String> fileList = FileIO.readFileByLines(filepath);
+        int num = 0;
         for (String movieId : fileList) {
             if (MovieMap.containsKey(movieId)){
+                num++;
+                //if (num > 100) break;
                 submovieMap.put(movieId,MovieMap.get(movieId));
             }
         }
