@@ -9,9 +9,7 @@ import model.Movie;
 import utils.CalSimilarity;
 import utils.FileIO;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * initial tensor
@@ -28,25 +26,17 @@ public class Tensor_initial {
     public static Map<String,Movie> movieList = new HashMap<>();
     public static Map<String,Movie> movieSubList = new HashMap<>();
     public static void main(String[] args) {
-//        String filename = "E:\\ADA_Project\\RecommenderSystem\\src\\main\\resources\\tensorIndex.dat";
-//        String moviegenre = "E:\\ADA_Project\\RecommenderSystem\\src\\main\\resources\\moviegenre.dat";
-//        String fourway = "E:\\ADA_Project\\RecommenderSystem\\src\\main\\resources\\fourwaytensor.dat";
-//        CalSimilarity.initialieMovies();
-//        movieMapList = CalSimilarity.movieMap;
-//        initialIndex();
-//        System.out.println(movieToIndex.size()+"\n"+directorToIndex.size()+"\n"+actorToIndex.size()
-//                +"\n"+countryToIndex.size()+"\n"+genreToIndex.size()+"\n"+tagToIndex.size());
-//        writeFourWay(fourway);
-        indexIntial();
+        float[][] sim = new float[2596][2596];
+        sim[1][1] = 1;
     }
     public static void indexIntial(){
-        CalSimilarity.initialieMovies();
-        movieList = CalSimilarity.movieMap;
+        CalSimilarity cs = new CalSimilarity();
+        Map<String,Movie> movieList = cs.getMovieMap();
         System.out.println(movieList.size());
-        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex.dat";
+        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex(100_130).dat";
         movieSubList = getSubList(filepath, movieList);
         System.out.println(movieSubList.size());
-        String outpath = System.getProperty("user.dir")+"\\data\\movieContent\\subTensorIndex1.dat";
+        String outpath = System.getProperty("user.dir")+"\\data\\movieContent\\subTensorIndex(100_130).dat";
         initialSubIndex(movieSubList,outpath);
     }
     //初始化各个属性的下标
@@ -83,22 +73,21 @@ public class Tensor_initial {
                             +"类型数："+genreToIndex.size()+"\n"
                             +"国家数："+countryToIndex.size()+"\n"
                             +"标签数："+tagToIndex.size());
-        StringBuilder str = new StringBuilder();
-        for (Map.Entry<String, Movie> movieEntry : movieSubList.entrySet()) {
-            for (String actor : movieEntry.getValue().getActors()) {
-                for (String genre : movieEntry.getValue().getGeneres()) {
-                    for (String tag : movieEntry.getValue().getTags()) {
-                        str.append(movieToIndex.get(movieEntry.getKey()) + " "
-                                + actorToIndex.get(actor) + " " + directorToIndex.get(movieEntry.getValue().getDirector())
-                                + " " + genreToIndex.get(genre) + " " + countryToIndex.get(movieEntry.getValue().getCountry())
-                                + " " + tagToIndex.get(tag)+"\n");
-                    }
-                }
-
-
-            }
-        }
-        FileIO.appendToFile(filepath,str.toString());
+//        StringBuilder str = new StringBuilder();
+//        for (Map.Entry<String, Movie> movieEntry : movieSubList.entrySet()) {
+//
+//                for (String genre : movieEntry.getValue().getGeneres()) {
+//                    for (String tag : movieEntry.getValue().getTags()) {
+//                        str.append(movieToIndex.get(movieEntry.getKey()) + " "
+//                                + directorToIndex.get(movieEntry.getValue().getDirector())
+//                                + " " + genreToIndex.get(genre) + " " + countryToIndex.get(movieEntry.getValue().getCountry())
+//                                + " " + tagToIndex.get(tag)+"\n");
+//                    }
+//
+//
+//            }
+//        }
+//        FileIO.appendToFile(filepath,str.toString());
     }
     public static Map<String,Movie> getSubList(String filepath,Map<String,Movie> MovieMap){
         Map<String,Movie> submovieMap = new HashMap<>();

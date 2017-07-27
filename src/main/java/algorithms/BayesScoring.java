@@ -17,9 +17,11 @@ import java.util.stream.Collectors;
 public class BayesScoring {
     public static int maxRecord,maxCount;
     private static Map<String, UserRecord> usermap = new HashMap<>();
+
     private static Map<String,Float> itemscore = new HashMap<>();
     private static Map<ItemTag,List<String>> itemTagListMap = new HashMap<>();
     public static Map<String,List<String>> tagListMap = new HashMap<>();
+    public static Map<String,List<String>> itemListMap = new HashMap<>();
     public static float bookAvgRate = 0,artistAvgRate = 0,avgRate = 0;
     public static Map<String, UserRecord> getUsermap(float ratio) {
         if (ratio == 1f) return usermap;
@@ -39,7 +41,14 @@ public class BayesScoring {
     public static Map<String, Set<String>> tagUserMap = new HashMap<>();
     //所有物品及用户列表
     public static Map<String,Set<String>> itemUserMap = new HashMap<>();
-
+    public static void initialData(String tagpath,String ratepath,String scorepath){
+        //初始化所有物品的评分
+        initialItemScore(scorepath);
+        //初始化用户的item-tag记录
+        initialUserItemTagMap(tagpath);
+        //初始化用户的阅读评分记录
+        initialUserRatingMap(ratepath);
+    }
     /**
      *
      * @param filepath item的评分
@@ -53,6 +62,7 @@ public class BayesScoring {
             itemscore.put(record[0],Float.valueOf(record[1]));
             avgRate += Float.valueOf(record[1]);
             count++;
+
         }
         avgRate/=count;
     }
@@ -222,10 +232,10 @@ public class BayesScoring {
      * @param userId
      * @return
      */
-    public static void getItemScoreByContent(String userId,Map<String,Float> itemScoreMap){
+    public static void getItemScoreByContent(String userId,Map<String,Float> itemScoreMap,CalSimilarity cs){
         for (String item : usermap.get(userId).getItemsByItemTag()) {
-            //Map<String,Float> itemSimMap = CalSimilarity.similarityList(item);
-            Map<String,Float> itemSimMap = CalSimilarity.similarityListByTensor(item);
+            Map<String,Float> itemSimMap = cs.similarityMap(item);
+            //Map<String,Float> itemSimMap = CalSimilarity.similarityListByTensor(item);
             for (Map.Entry<String, Float> itemEntry : itemSimMap.entrySet()) {
                 if (!itemScoreMap.containsKey(itemEntry.getKey())){
                     itemScoreMap.put(itemEntry.getKey(),itemEntry.getValue());
@@ -317,7 +327,7 @@ public class BayesScoring {
 //                itemScoreMap.put(entry.getKey(),entry.getValue()+itemScoreMap.get(entry.getKey()));
 //            }
 //        }
-        return ItemSimilarity.sortByValue(itemScoreMap);
+        return ItemSimilarity.sortByValue(itemScoreMap,1);
     }
 
     /**
@@ -373,14 +383,15 @@ public class BayesScoring {
                 itemScoreMap.put(entry.getKey(),entry.getValue()+itemScoreMap.get(entry.getKey()));
             }
         }
-        return ItemSimilarity.sortByValue(itemScoreMap);
+        return ItemSimilarity.sortByValue(itemScoreMap,1);
     }
     public static Map<String, Float> getItemScoreofModel3(String userId, Map<String, Float> itemScoreMap) {
+        CalSimilarity cs =new CalSimilarity();
         getItemScoreofModel2(userId,itemScoreMap);
         getItemScoreofModel1(userId, itemScoreMap);
         normMap(itemScoreMap,0.5f);
         Map<String,Float> simMap = new HashMap<>();
-        getItemScoreByContent(userId,simMap);
+        getItemScoreByContent(userId,simMap,cs);
         //getArtistScoreByContent(userId,simMap);
         //getBookScoreByContent(userId,simMap);
         normMap(simMap,0.5f);
@@ -405,7 +416,32 @@ public class BayesScoring {
 //                }
 //            }
 //        }
-        return ItemSimilarity.sortByValue(itemScoreMap);
+        return ItemSimilarity.sortByValue(itemScoreMap,1);
+    }
+
+    /**
+     * 短路径1，根据item找路径
+     * @param item
+     * @return
+     */
+    public static Map<String,Float> getItemScoreofModel1(Map<String,UserRecord> subUserMap,String item){
+        Map<String, Float> itemMap = new HashMap<>();
+        float itemScore = itemscore.get(item);
+        for (String user : itemUserMap.get(item)) {
+            if (subUserMap.containsKey(user)){
+                for (String otheritem : usermap.get(user).getItems().keySet()) {
+                    float otherItemScore = itemscore.get(otheritem);
+                    float pathScore = itemScore * otherItemScore;
+                    if (!itemMap.containsKey(otheritem)){
+                        itemMap.put(otheritem, pathScore);
+                    }else {
+                        itemMap.put(otheritem, itemMap.get(otheritem) + pathScore);
+                    }
+                }
+            }
+
+        }
+        return itemMap;
     }
     /**
      * 模型一
@@ -650,7 +686,6 @@ public class BayesScoring {
      */
     public static void initialUserRatingMap(String filepath)
     {
-
         Map<String,List<Float>> itemScoreList = new HashMap<>();
         List<String> list = FileIO.readFileByLines(filepath);
         for (String str:list)
@@ -674,32 +709,18 @@ public class BayesScoring {
             else
             {
                 usermap.get(record[0]).addItem(record[1],Float.valueOf(record[2]));
-//                UserRecord userRecord = usermap.get(record[0]);
-//                if (userRecord.isContainItemInItemTag(record[1]))
-//                {
-//                    continue;
-//                }
-//                else
-//                {
-//                    usermap.get(record[0]).addItem(record[1],Float.valueOf(record[2]));
-//                }
+
+            }
+
+            if (!itemUserMap.containsKey(record[1])){
+                Set<String> users = new HashSet<>();
+                users.add(record[0]);
+                itemUserMap.put(record[1],users);
+            }else {
+                itemUserMap.get(record[1]).add(record[0]);
             }
         }
-//        for (Map.Entry<String, List<Float>> entry : itemScoreList.entrySet()) {
-//            if (!itemscore.containsKey(entry.getKey())) {
-//                float avg = 0;
-//                for (Float aFloat : entry.getValue()) {
-//                    avg += aFloat;
-//                }
-//                avg/=(float) entry.getValue().size();
-//                int plus = 0,minus = 0;
-//                for (Float aFloat : entry.getValue()) {
-//                    if (aFloat < avg) minus++;
-//                    else plus++;
-//                }
-//                itemscore.put(entry.getKey(),(float)plus/(float)(plus+minus));
-//            }
-//        }
+
     }
 
     /**

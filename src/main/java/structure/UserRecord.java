@@ -120,6 +120,15 @@ public class UserRecord {
     {
         return userid.equals(id) ? true : false;
     }
+    public Set<String> getTagsByItemTags(Set<String> items){
+        Set<String> tags = new HashSet<>();
+        for (ItemTag it : itemTags) {
+            if (items.contains(it.getItem())){
+                tags.add(it.getItem());
+            }
+        }
+        return tags;
+    }
     public Set<String> getTagsByItemTags(){
         Set<String> tags = new HashSet<>();
         for (ItemTag it:itemTags){

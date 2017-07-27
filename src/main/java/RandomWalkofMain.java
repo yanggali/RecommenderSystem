@@ -78,7 +78,7 @@ public class RandomWalkofMain {
             float avgPrecision = 0, avgRecall = 0, avgFmeasure = 0,recUsers = 0;
             for (Map.Entry<String, Integer> entry : usernodeToIndex.entrySet()) {
                 Map<String,Float> itemScore = recListMap.get(entry.getKey());
-                itemScore = ItemSimilarity.sortByValue(itemScore);
+                itemScore = ItemSimilarity.sortByValue(itemScore,1);
                 Set<String> allSet = new HashSet<>();
                 Stream<Map.Entry<String,Float>> itemStream1 = itemScore.entrySet().stream();
                 allSet.addAll(itemStream1.limit(recommendCount).map(e->e.getKey()).collect(Collectors.toSet()));
@@ -123,7 +123,7 @@ public class RandomWalkofMain {
                     if (probability[itemEntry.getKey()]!=Double.NaN&&probability[itemEntry.getKey()]>0)
                         itemScore.put(itemEntry.getValue(),probability[itemEntry.getKey()]);
                 }
-                itemScore= ItemSimilarity.sortByValue(itemScore);
+                itemScore= ItemSimilarity.sortByValue(itemScore,1);
                 Set<String> allSet = new HashSet<>();
                 Stream<Map.Entry<String,Double>> itemStream1 = itemScore.entrySet().stream();
                 allSet.addAll(itemStream1.limit(recommendCount).map(e->e.getKey()).collect(Collectors.toSet()));

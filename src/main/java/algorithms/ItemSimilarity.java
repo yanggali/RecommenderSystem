@@ -126,7 +126,7 @@ public class ItemSimilarity {
             }
         }
 
-        itemSimilarity = sortByValue(itemSimilarity);
+        itemSimilarity = sortByValue(itemSimilarity,1);
         Map<String, Float> result = new HashMap<>();
         int count = 0;
         for (Map.Entry<String, Float> entry : itemSimilarity.entrySet()) {
@@ -134,7 +134,7 @@ public class ItemSimilarity {
                 result.put(entry.getKey(), entry.getValue());
             } else break;
         }
-        result = sortByValue(result);
+        result = sortByValue(result,1);
         return result;
 
     }
@@ -169,7 +169,7 @@ public class ItemSimilarity {
                 itemMap.remove(item);
             }
         }
-        itemMap = sortByValue(itemMap);
+        itemMap = sortByValue(itemMap,1);
         return itemMap;
     }
     public static Map<String,Float> getItemMap(String userid)
@@ -188,7 +188,7 @@ public class ItemSimilarity {
                 itemMap.remove(item);
             }
         }
-        itemMap = sortByValue(itemMap);
+        itemMap = sortByValue(itemMap,1);
         return itemMap;
     }
     private static void addMap(Map<String,Float> total,Map<String,Float> add)
@@ -214,12 +214,17 @@ public class ItemSimilarity {
             System.out.println("物品："+entry.getKey()+"，相似度："+entry.getValue());
         }
     }
+
     //对map根据value排序
-    public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue( Map<K, V> map ) {
+    public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue( Map<K, V> map ,int type) {
         List<Map.Entry<K, V>> list = new LinkedList<Map.Entry<K, V>>(map.entrySet());
         Collections.sort(list, new Comparator<Map.Entry<K, V>>() {
             public int compare(Map.Entry<K, V> o1, Map.Entry<K, V> o2) {
-                return -(o1.getValue()).compareTo(o2.getValue());
+                if (type == 1){
+                    return -(o1.getValue()).compareTo(o2.getValue());
+                }
+                else
+                    return (o1.getValue()).compareTo(o2.getValue());
             }
         });
 

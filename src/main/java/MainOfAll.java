@@ -1,9 +1,7 @@
 import algorithms.BayesScoring;
 import algorithms.ItemSimilarity;
-import algorithms.Tensor_initial;
 import structure.UserRecord;
 import utils.CalSimilarity;
-import utils.FileIO;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,12 +17,15 @@ public class MainOfAll {
     public static Map<String,Map<String,Float>> recListMap = new HashMap<>();
     public static String rateFile = System.getProperty("user.dir")+"/src/main/resources/doubanset/user_rates.dat";
     public static String tagFile = System.getProperty("user.dir")+"/src/main/resources/doubanset/user_tags.dat";
+    public static CalSimilarity cs;
     public static void main(String[] args) {
+        System.out.println(Runtime.getRuntime().totalMemory()/1000/1000);
+        System.out.println(Runtime.getRuntime().freeMemory()/1000/1000);
+
         String tagpath = System.getProperty("user.dir")+"/data/hetrectags.dat";
         String ratepath = System.getProperty("user.dir")+"/data/ratings.dat";
         String scorepath = System.getProperty("user.dir")+"/data/moviedistribution.dat";
         //test.initialData();
-        CalSimilarity.initialieMovies();
 
 
 //        String tagpath = System.getProperty("user.dir")+"/data/lastfm/tags.dat";
@@ -37,16 +38,17 @@ public class MainOfAll {
 //        String scorepath = System.getProperty("user.dir")+"/src/main/resources/doubanset/bookscore.dat";
 //        CalSimilarity.initialBooks();
 
-        test.initialData(tagpath,ratepath,scorepath);
+        BayesScoring.initialData(tagpath,ratepath,scorepath);
 
         //doubantest.initialData();
 
 
         userRecordMap = BayesScoring.getUsermap((float) 1);
-        subUserRecordMap = getSubUserMap(100,200,userRecordMap);
+        subUserRecordMap = getSubUserMap(100,110,userRecordMap);
         Set<String> movieSet = new HashSet<>();
         for (Map.Entry<String, UserRecord> entry : subUserRecordMap.entrySet()) {
-            movieSet.addAll(entry.getValue().getItemsByItemTag());
+            movieSet.addAll(entry.getValue().getItems().keySet());
+            //movieSet.addAll(entry.getValue().getItemsByItemTag());
         }
         System.out.println("过滤之后还剩：" + subUserRecordMap.size() + "个用户\n还有" + movieSet.size() + "部电影");
 
@@ -54,18 +56,19 @@ public class MainOfAll {
 //        for (String movie : movieSet) {
 //            sb.append(movie).append("\n");
 //        }
-//        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex.dat";
+//        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex(100_130).dat";
 //        FileIO.appendToFile(filepath,sb.toString());
-        Tensor_initial.indexIntial();
-        //初始化矩阵相似度矩阵
-        String simPath=System.getProperty("user.dir")+"/data/movieContent/sim.dat";
-        CalSimilarity.initialMovieSim(simPath);
-//        System.out.println(BayesScoring.tagUserMap.get("空").size());
-        //dividDataSets(userRecordMap,rateFile,tagFile);
-        recommendByAll(1);
-//        float sim1 = CalSimilarity.calBetweenList(CalSimilarity.movieMap.get("44665").getTags(),CalSimilarity.movieMap.get("65126").getTags());
-//        float sim2 = CalSimilarity.movieSimMatrix[Tensor_initial.movieToIndex.get("44665") - 1][Tensor_initial.movieToIndex.get("65126") - 1];
-//        System.out.println(sim1+"\n"+sim2);
+        //Set<String> movieSet = new HashSet<>();
+        //List<String> strList = FileIO.readFileByLines(System.getProperty("user.dir")+"\\data\\subMovieIndex(100_130).dat");
+
+//        cs = new CalSimilarity();
+//        //cs.initialMovieSim(movieSet);
+//        cs.initialMovieSim(System.getProperty("user.dir")+"/data/movieToIndex(100_130).dat",System.getProperty("user.dir")+"/data/movieContent/sim(100_130).dat");
+//        System.out.println("内容相似度计算结束");
+//
+//        recommendWay(1);
+        //recommendByAll(1);
+
     }
     public static Map<String, UserRecord> getSubUserMap(int mincount,int maxcount,Map<String, UserRecord> allMap){
         Map<String, UserRecord> subMap = new HashMap<>();
@@ -76,36 +79,89 @@ public class MainOfAll {
         }
         return subMap;
     }
-    //划分数据集，一半训练，一半测试
-    public static void dividDataSets(Map<String, UserRecord> userRecordMap,String rateData,String tagData){
-        StringBuffer rateStr = new StringBuffer(),tagStr = new StringBuffer();
-        for (Map.Entry<String, UserRecord> entry : userRecordMap.entrySet()) {
-            int len = entry.getValue().getItems().size(),index = 0;
-            for (Map.Entry<String, Float> itemRate : entry.getValue().getItems().entrySet()) {
-                int half = len/2;
-                if (index < half){
-                    rateStr.append(entry.getKey()+"::"+itemRate.getKey()+"::"+itemRate.getValue()+"\n");
+    public static void recommendWay(int type){
+        for(int recNum= 10; recNum <= 25;recNum+=5){
+            //System.out.println("推荐数："+recNum);
+            long initialTime = System.currentTimeMillis();
+            float avgPrecision = 0;
+            for (Map.Entry<String, UserRecord> userEntry : subUserRecordMap.entrySet()) {
+                float userPrecision = getPrecision(userEntry.getValue(),type,recNum);
+                //System.out.println("用户"+userEntry.getKey()+"的准确率为："+userPrecision);
+                avgPrecision += userPrecision;
+            }
+            avgPrecision /= subUserRecordMap.size();
+            System.out.println("推荐数为："+recNum+"时所有用户的准确率为："+avgPrecision);
+            long endTime = System.currentTimeMillis();
+            System.out.println("总共用时"+((endTime-initialTime)/1000)+"秒");
+        }
+
+    }
+    //返回一个用户的推荐准确率(通过十字交叉法得到)
+    public static float getPrecision(UserRecord ur,int type,int recNum){
+        String[] userItemArray = ur.getItems().keySet().toArray(new String[0]);
+        int len=userItemArray.length;
+        float avgPrecision = 0;
+        for(int i=0;i < len;i+=len/5){
+            Set<String> trainItemSet = new HashSet<>();
+            Set<String> testItemSet = new HashSet<>();
+            for (int j = 0; j < len; j++) {
+                if (j >= i && j < i + len / 5) {
+                    testItemSet.add(userItemArray[j]);
                 }
                 else {
-                    Map<String,List<String>> tagListMap = entry.getValue().getItemTagList();
-                    if (tagListMap.get(itemRate.getKey())!=null){
-                        for (String tag : tagListMap.get(itemRate.getKey())) {
-                            tagStr.append(entry.getKey()+"::"+itemRate.getKey()+"::"+tag+"\n");
+                    trainItemSet.add(userItemArray[j]);
+                }
+            }
+            Map<String,Float> itemScoreMap;
+            //基于矢量的内容推荐
+            if (type == 1){
+                itemScoreMap = new HashMap<>();
+                for (String item : trainItemSet) {
+                    //System.out.println("正在计算"+item);
+                    Map<String,Float> itemSimMap;
+                    itemSimMap = cs.similarityMap(item);
+                    for (Map.Entry<String, Float> itemEntry : itemSimMap.entrySet()) {
+                        if (!itemScoreMap.containsKey(itemEntry.getKey())){
+                            itemScoreMap.put(itemEntry.getKey(),itemEntry.getValue());
+                        }else {
+                            itemScoreMap.put(itemEntry.getKey(),itemScoreMap.get(itemEntry.getKey())+itemSimMap.get(itemEntry.getKey()));
                         }
                     }
-                    else tagStr.append(entry.getKey()+"::"+itemRate.getKey()+"::null"+"\n");
                 }
-                index++;
             }
+            //混合推荐
+            else{
+                itemScoreMap = new HashMap<>();
+                Set<String> trainTagSet = ur.getTagsByItemTags(trainItemSet);
+                for (String item : trainItemSet) {
+                    //System.out.println("正在计算"+item);
+                    Map<String,Float> itemSimMap;
+                    itemSimMap = BayesScoring.getItemScoreofModel1(subUserRecordMap,item);
+                    for (Map.Entry<String, Float> itemEntry : itemSimMap.entrySet()) {
+                        if (!itemScoreMap.containsKey(itemEntry.getKey())){
+                            itemScoreMap.put(itemEntry.getKey(),itemEntry.getValue());
+                        }else {
+                            itemScoreMap.put(itemEntry.getKey(),itemScoreMap.get(itemEntry.getKey())+itemSimMap.get(itemEntry.getKey()));
+                        }
+                    }
+                }
+            }
+            itemScoreMap = ItemSimilarity.sortByValue(itemScoreMap,2);
+            Set<String> recommendSet = new HashSet<>();
+            Stream<Map.Entry<String,Float>> itemStream1 = itemScoreMap.entrySet().stream();
+            recommendSet.addAll(itemStream1.limit(recNum).map(e->e.getKey()).collect(Collectors.toSet()));
+            recommendSet.retainAll(testItemSet);
+            avgPrecision += recommendSet.size();
         }
-        FileIO.appendToFile(rateData,rateStr.toString());
-        FileIO.appendToFile(tagData,tagStr.toString());
+        avgPrecision /= (5 * recNum);
+        return avgPrecision;
+
     }
     //图与内容结合的方式
     public static void recommendByAll(float weight) {
         Map<String,List<Float>> userAP = new HashMap<>();
         long initialTime = System.currentTimeMillis();
-        for (int recommendCount = 10; recommendCount <=50; recommendCount +=10) {
+        for (int recommendCount = 1; recommendCount <=10; recommendCount +=1) {
             long startTime = System.currentTimeMillis();
             System.out.println("推荐数：" + recommendCount);
             float avgPrecision = 0, avgRecall = 0, avgFmeasure = 0;
@@ -119,14 +175,14 @@ public class MainOfAll {
                 //固定权值
                 //BayesScoring.getItemScoreofModel1(userEntry.getKey(),itemScore);
                 //基于电影内容
-                BayesScoring.getItemScoreByContent(userEntry.getKey(),itemScore);
+                BayesScoring.getItemScoreByContent(userEntry.getKey(),itemScore,cs);
                 //基于艺术家内容
                 //BayesScoring.getArtistScoreByContent(userEntry.getKey(),itemScore);
                 //基于书本内容
                 //BayesScoring.getBookScoreByContent(userEntry.getKey(),itemScore);
                 //itemScore = BayesScoring.getItemscoreByAll(userEntry.getKey());
 
-                itemScore = ItemSimilarity.sortByValue(itemScore);
+                itemScore = ItemSimilarity.sortByValue(itemScore,1);
                 Set<String> allSet = new HashSet<>();
                 Stream<Map.Entry<String,Float>> itemStream1 = itemScore.entrySet().stream();
                 allSet.addAll(itemStream1.limit(recommendCount).map(e->e.getKey()).collect(Collectors.toSet()));
@@ -248,8 +304,8 @@ public class MainOfAll {
     public static Map<String, Float> getItemScoreByContent(String userId) {
         Map<String,Float> itemScore = new HashMap<>();
         for (String item : userRecordMap.get(userId).getItemsByItemTag()) {
-            itemScore.putAll(CalSimilarity.similarityList(item));
+            itemScore.putAll(cs.similarityMap(item));
         }
-        return ItemSimilarity.sortByValue(itemScore);
+        return ItemSimilarity.sortByValue(itemScore,1);
     }
 }
