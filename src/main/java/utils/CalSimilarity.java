@@ -31,6 +31,8 @@ public class CalSimilarity {
     public Map<String, Integer> directorToIndex = new HashMap<>();
     public Map<String, Integer> genreToIndex = new HashMap<>();
     public Map<String,Integer> tagToIndex = new HashMap<>();
+    public Map<String,Integer> yearToIndex = new HashMap<>();
+    public Map<String,Integer> keywordToIndex = new HashMap<>();
 
 
     //存放所有电影的map
@@ -46,11 +48,14 @@ public class CalSimilarity {
         String movie_directors = System.getProperty("user.dir")+"/data/movieContent/movie_directors.dat";
         String movie_genres = System.getProperty("user.dir")+"/data/movieContent/movie_genres.dat";
         String movie_tags = System.getProperty("user.dir")+"/data/movieContent/movie_tags.dat";
+        String movie_year = System.getProperty("user.dir")+"/data/movieContent/movie_year.dat";
+        String movie_keywords = System.getProperty("user.dir")+"/data/movieContent/movie_keywords.dat";
         initializeCountry(movie_country);
         initializeActors(movie_actors);
         initializeDirector(movie_directors);
         initializeGenres(movie_genres);
         initializeTags(movie_tags);
+
     }
 
     public Map<String, Movie> getMovieMap() {
@@ -310,6 +315,36 @@ public class CalSimilarity {
             }else {
                 movieMap.get(genres[0]).getGeneres().add(g);
             }
+        }
+    }
+    //初始化年份
+    public void initializeYear(String path){
+        yearToIndex = new HashMap<>();
+        List<String> list = FileIO.readFileByLines(path);
+        for (String line : list) {
+            String[] strs = line.split("\t");
+            if (!yearToIndex.containsKey(strs[1])) {
+                yearToIndex.put(strs[1],yearToIndex.size());
+            }
+            if (!movieMap.containsKey(strs[0])){
+                Movie mv = new Movie();
+                mv.setMovieId(Integer.parseInt(strs[0]));
+                mv.setYear(strs[1]);
+                movieMap.put(strs[0],mv);
+            }
+            else {
+                movieMap.get(strs[0]).setYear(strs[1]);
+            }
+        }
+    }
+    //初始化关键词
+    private void initializeKeywords(String path){
+        List<String> stopwords = FileIO.readFileByLines(System.getProperty("user.dir")+"/data/movieContent/stopwords.dat");
+        keywordToIndex = new HashMap<>();
+        List<String> list = FileIO.readFileByLines(path);
+        for (String line : list) {
+            String[] strs = line.split(" ");
+
         }
     }
     //初始化标签
