@@ -9,17 +9,27 @@ import java.util.stream.Stream;
 /**
  * Created by Yangjiali on 2017/3/19 0019.
  */
+
 public class test {
     public static Map<String, UserRecord> userRecordMap = new HashMap<>();
     public static void main(String[] args) {
-        //初始化lastfm数据集
-        initialLastFmData();
-        userRecordMap = BayesScoring.getUsermap(1);
+        Map<String,Integer> a = new HashMap<>();
+        Map<String,Integer> b = a;
+        b.put("1",1);
+        b.put("2",2);
+        System.out.println(b.size());
 
-        recommendByTag(400,400,50);
-        //recommendByItemTag(400,400,50);
-        //recommendByItem();
-        //recommend(400,400,50);
+    }
+    public void test(float f) {
+        System.out.println("float");
+    }
+
+    public void test(double d) {
+        System.out.println("double");
+    }
+
+    public void test(int i) {
+        System.out.println("int");
     }
     public static void recommenByTagOrItem(){
 

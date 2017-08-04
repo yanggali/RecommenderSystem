@@ -8,6 +8,32 @@ import java.util.List;
  * Created by YangJiali on 2017/3/20 0020.
  */
 public class FileIO {
+    //将矩阵写入文件中
+    public static void matrixToFile(double[][] matrix,String fileName){
+        FileWriter writer = null;
+        try {
+            // 打开一个写文件器，构造函数中的第二个参数true表示以追加形式写文件,false表示覆盖的方式写入
+            writer = new FileWriter(fileName, false);
+            StringBuilder content = new StringBuilder();
+            for (int i = 0 ;i < matrix.length;i++){
+                for (int j = 0;j < matrix[0].length;j++){
+                    content.append(matrix[i][j]+" ");
+                }
+                content.append("\n");
+            }
+            writer.write(content.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (writer != null) {
+                    writer.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     /**
      * 以行为单位读取文件，常用于读面向行的格式化文件
      */

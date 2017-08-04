@@ -2,6 +2,7 @@ import algorithms.BayesScoring;
 import algorithms.ItemSimilarity;
 import structure.UserRecord;
 import utils.CalSimilarity;
+import utils.FileIO;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,9 +23,9 @@ public class MainOfAll {
         System.out.println(Runtime.getRuntime().totalMemory()/1000/1000);
         System.out.println(Runtime.getRuntime().freeMemory()/1000/1000);
 
-        String tagpath = System.getProperty("user.dir")+"/data/hetrectags.dat";
-        String ratepath = System.getProperty("user.dir")+"/data/ratings.dat";
-        String scorepath = System.getProperty("user.dir")+"/data/moviedistribution.dat";
+        String tagpath = System.getProperty("user.dir")+"/data/movieRating/hetrectags.dat";
+        String ratepath = System.getProperty("user.dir")+"/data/movieRating/ratings.dat";
+        String scorepath = System.getProperty("user.dir")+"/data/movieRating/moviedistribution.dat";
         //test.initialData();
 
 
@@ -45,6 +46,10 @@ public class MainOfAll {
 
         userRecordMap = BayesScoring.getUsermap((float) 1);
         subUserRecordMap = getSubUserMap(100,110,userRecordMap);
+        String movieToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/movieToIndex.dat";
+        String userToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/userToIndex.dat";
+        float[][] rateMatrix = BayesScoring.getRateMatrix(subUserRecordMap,userToIndexPath,movieToIndexPath);
+        double[][] itemSimMatrix = BayesScoring.getItemSimMatrix(rateMatrix);
         Set<String> movieSet = new HashSet<>();
         for (Map.Entry<String, UserRecord> entry : subUserRecordMap.entrySet()) {
             movieSet.addAll(entry.getValue().getItems().keySet());
@@ -52,14 +57,11 @@ public class MainOfAll {
         }
         System.out.println("过滤之后还剩：" + subUserRecordMap.size() + "个用户\n还有" + movieSet.size() + "部电影");
 
-//        StringBuilder sb = new StringBuilder();
-//        for (String movie : movieSet) {
-//            sb.append(movie).append("\n");
-//        }
-//        String filepath = System.getProperty("user.dir")+"\\data\\subMovieIndex(100_130).dat";
-//        FileIO.appendToFile(filepath,sb.toString());
-        //Set<String> movieSet = new HashSet<>();
-        //List<String> strList = FileIO.readFileByLines(System.getProperty("user.dir")+"\\data\\subMovieIndex(100_130).dat");
+        //将相似度矩阵写入文件
+        String simMatrixPath = System.getProperty("user.dir")+"/data/matrix/simMatrix.dat";
+        FileIO.matrixToFile(itemSimMatrix, simMatrixPath);
+
+        //将物品特征矩阵写入文件
 
 //        cs = new CalSimilarity();
 //        //cs.initialMovieSim(movieSet);

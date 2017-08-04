@@ -23,6 +23,62 @@ public class BayesScoring {
     public static Map<String,List<String>> tagListMap = new HashMap<>();
     public static Map<String,List<String>> itemListMap = new HashMap<>();
     public static float bookAvgRate = 0,artistAvgRate = 0,avgRate = 0;
+    //获取用户物品评分矩阵(物品*用户)
+    public static float[][] getRateMatrix(Map<String, UserRecord> subUserMap, String userToIndexPath, String movieToIndexPath) {
+        Map<String,Integer> userToIndex = new HashMap<>();
+        Map<String,Integer> movieToIndex = new HashMap<>();
+        StringBuilder strUser = new StringBuilder();
+        StringBuilder strMovie = new StringBuilder();
+        for (Map.Entry<String, UserRecord> userRecordEntry : subUserMap.entrySet()) {
+            if (!userToIndex.containsKey(userRecordEntry.getKey())){
+                userToIndex.put(userRecordEntry.getKey(),userToIndex.size());
+                strUser.append(userRecordEntry.getKey()+" "+(userToIndex.size()-1)+"\n");
+            }
+            for (String item : userRecordEntry.getValue().getItems().keySet()) {
+                if (!movieToIndex.containsKey(item)){
+                    movieToIndex.put(item,movieToIndex.size());
+                    strMovie.append(item+" "+(movieToIndex.size()-1)+"\n");
+                }
+            }
+        }
+        System.out.println("用户有:"+userToIndex.size()+"  物品有："+movieToIndex.size());
+        //将用户即物品id对应到index,并保存至文件
+        FileIO.writeToFile(userToIndexPath,strUser.toString());
+        FileIO.writeToFile(movieToIndexPath,strMovie.toString());
+        //初始化评分矩阵(物品-用户)
+        float[][] rateMatrix = new float[movieToIndex.size()][userToIndex.size()];
+        for (Map.Entry<String, UserRecord> userRecordEntry : subUserMap.entrySet()) {
+            for (Map.Entry<String, Float> itemRate : userRecordEntry.getValue().getItems().entrySet()) {
+                rateMatrix[movieToIndex.get(itemRate.getKey())][userToIndex.get(userRecordEntry.getKey())] = itemRate.getValue();
+            }
+        }
+        return rateMatrix;
+    }
+    //计算物品相似度矩阵
+    public static double[][] getItemSimMatrix(float[][] itemUserMatrix){
+        double[][] simMatrix = new double[itemUserMatrix.length][itemUserMatrix.length];
+        for (int i = 0;i < itemUserMatrix.length;i++){
+            for (int j =0; j < itemUserMatrix.length;j++){
+                if (i < j){
+                    simMatrix[i][j] = calCosineSim(itemUserMatrix[i],itemUserMatrix[j]);
+                }
+            }
+        }
+        return simMatrix;
+    }
+    //计算向量相似度(余弦相似度)
+    public static double calCosineSim(float[] vec1,float[] vec2){
+        float sum = 0,vec1sum = 0,vec2sum = 0;
+        for (int i =0 ;i < vec1.length;i++){
+            sum += vec1[i] * vec2[i];
+            vec1sum += vec1[i] * vec1[i];
+            vec2sum += vec2[i] * vec2[i];
+        }
+        double sum1 = Double.parseDouble(String.valueOf(vec1sum));
+        double sum2 = Double.parseDouble(String.valueOf(vec2sum));
+        //return 1;
+        return sum/(Math.sqrt(sum1)*Math.sqrt(sum2));
+    }
     public static Map<String, UserRecord> getUsermap(float ratio) {
         if (ratio == 1f) return usermap;
         for (Map.Entry<String, UserRecord> entry : usermap.entrySet()) {

@@ -105,11 +105,11 @@ public class Tensor_initial {
     //将各属性对应到各下标中
     public static void initialIndex(){
         movieToIndex = CalSimilarity.movieIndex;
-        actorToIndex = CalSimilarity.actorIndex;
-        countryToIndex = CalSimilarity.countryIndex;
-        directorToIndex = CalSimilarity.directorIndex;
-        genreToIndex = CalSimilarity.genreIndex;
-        tagToIndex = CalSimilarity.tagIndex;
+//        actorToIndex = CalSimilarity.actorIndex;
+//        countryToIndex = CalSimilarity.countryIndex;
+//        directorToIndex = CalSimilarity.directorIndex;
+//        genreToIndex = CalSimilarity.genreIndex;
+//        tagToIndex = CalSimilarity.tagIndex;
     }
     public static void printList() {
         int count = 0;

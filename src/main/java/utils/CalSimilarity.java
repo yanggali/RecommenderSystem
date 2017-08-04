@@ -17,15 +17,17 @@ public class CalSimilarity {
 
     public static Map<String,List<String>> bookTagListMap = new HashMap<>();
     public static Map<String,List<String>> artistTagListMap = new HashMap<>();
-    //存放actor,country等以及对应下标
+    //存放所有电影的actor,country等以及对应下标
     public static Map<String,Integer> movieIndex = new HashMap<>();
-    public static Map<String,Integer> actorIndex;
-    public static Map<String,Integer> countryIndex;
-    public static Map<String,Integer> directorIndex;
-    public static Map<String,Integer> genreIndex;
-    public static Map<String,Integer> tagIndex;
+    //public static Map<String,Integer> actorIndex;
+    //public static Map<String,Integer> countryIndex;
+    //public static Map<String,Integer> directorIndex;
+    //public static Map<String,Integer> genreIndex;
+    //public static Map<String,Integer> tagIndex;
+    //public static Map<String,Integer> yearIndex;
+    public static Map<String,Integer> keywordIndex;
 
-
+    //存放子集合的actor,country等及对应下标
     public Map<String, Integer> actorToIndex = new HashMap<>();
     public Map<String, Integer> countryToIndex = new HashMap<>();
     public Map<String, Integer> directorToIndex = new HashMap<>();
@@ -41,6 +43,9 @@ public class CalSimilarity {
     public Map<Integer,String> indexToMovie;
     public float[][] movieSimMatrix;
 
+    //存放用户物品评分矩阵
+
+
     public CalSimilarity() {
         movieMap = new HashMap<>();
         String movie_actors=System.getProperty("user.dir")+"/data/movieContent/movie_actors.dat";
@@ -55,7 +60,8 @@ public class CalSimilarity {
         initializeDirector(movie_directors);
         initializeGenres(movie_genres);
         initializeTags(movie_tags);
-
+        initializeYear(movie_year);
+        initializeKeywords(movie_keywords);
     }
 
     public Map<String, Movie> getMovieMap() {
@@ -98,6 +104,17 @@ public class CalSimilarity {
             }
         }
     }
+    //根据list中id获取电影子集
+    public Map<String,Movie> getSubMap(Set<String> subMovieIdSet,Map<String,Movie> MovieMap){
+        Map<String,Movie> subMovieMap = new HashMap<>();
+        for (String movieId : subMovieIdSet) {
+            if (MovieMap.containsKey(movieId)){
+                subMovieMap.put(movieId,MovieMap.get(movieId));
+            }
+        }
+        return subMovieMap;
+    }
+    //根据文件中id获取全部电影子集
     public Map<String,Movie> getSubMap(String filepath,Map<String,Movie> MovieMap){
         Map<String,Movie> submovieMap = new HashMap<>();
         List<String> fileList = FileIO.readFileByLines(filepath);
@@ -150,7 +167,20 @@ public class CalSimilarity {
         }
         return simMap;
     }
+    //初始化物品特征矩阵
+    public void initialItemFeature(String itemFile) {
+        Map<String,Movie> subMovieMap = new HashMap<>();
+        List<String> fileList = FileIO.readFileByLines(itemFile);
+        for (String line : fileList) {
+            if (!subMovieMap.containsKey(line.split(" ")[0])){
+                subMovieMap.put(line.split(" ")[0],movieMap.get(line.split(" ")[0]));
+            }
+        }
+        //以上获取电影子集合
 
+        //初始化电影特征矩阵
+
+    }
     /**
      * 初始化张量下标
      * @param filepath：电影id文件
@@ -234,7 +264,7 @@ public class CalSimilarity {
 
     //初始化导演
     public void initializeDirector(String path){
-        directorIndex = new HashMap<>();
+        //directorIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String str : list) {
             String[] director = str.split("\t");
@@ -245,9 +275,9 @@ public class CalSimilarity {
             else {
                 d = director[1];
             }
-            if (!directorIndex.containsKey(d)){
-                directorIndex.put(d,directorIndex.size());
-            }
+//            if (!directorIndex.containsKey(d)){
+//                directorIndex.put(d,directorIndex.size());
+//            }
             if (!movieMap.containsKey(director[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(director[0]));
@@ -258,9 +288,65 @@ public class CalSimilarity {
             }
         }
     }
+    //初始化关键词
+    public void initialKeywords(String path){
+        List<String> stopwordslist = FileIO.readFileByLines(System.getProperty("user.dir")+"/data/others/stopwords.dat");
+        List<String> titlelist = FileIO.readFileByLines(path);
+        for (String titleline : titlelist) {
+            String[] title = titleline.split("\t");
+            if (!movieIndex.containsKey(title[0])){
+                movieIndex.put(title[0],movieIndex.size());
+            }
+            List<String> keywordlist = new ArrayList<>();
+            for (String word : title[1].split(" ")) {
+                if (!stopwordslist.contains(word)) {
+                    keywordlist.add(word);
+                }
+            }
+            if (!movieMap.containsKey(title[0])){
+                Movie mv = new Movie();
+                mv.setMovieId(Integer.parseInt(title[0]));
+                mv.setKeywords(keywordlist);
+                movieMap.put(title[0],mv);
+            }
+            else {
+                movieMap.get(title[0]).setKeywords(keywordlist);
+            }
+        }
+    }
+    //初始化年份
+    public void initialYear(String path){
+        //yearIndex = new HashMap<>();
+        List<String> list = FileIO.readFileByLines(path);
+        for (String str : list) {
+            String[] year = str.split("\t");
+            //初始化所有电影
+            if (!movieIndex.containsKey(year[0])){
+                movieIndex.put(year[0],movieIndex.size());
+            }
+            String c;
+            if (year.length <= 1){
+                c = "n";
+            }else {
+                c = year[1];
+            }
+//            if(!yearIndex.containsKey(c)){
+//                yearIndex.put(c,yearIndex.size());
+//            }
+            if (!movieMap.containsKey(year[0])){
+                Movie mv = new Movie();
+                mv.setMovieId(Integer.parseInt(year[0]));
+                mv.setCountry(c);
+                movieMap.put(year[0],mv);
+            }else {
+                movieMap.get(year[0]).setCountry(c);
+
+            }
+        }
+    }
     //初始化国家
     public void initializeCountry(String path){
-        countryIndex = new HashMap<>();
+        //countryIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String str : list) {
             String[] country = str.split("\t");
@@ -274,9 +360,9 @@ public class CalSimilarity {
             }else {
                 c = country[1];
             }
-            if(!countryIndex.containsKey(c)){
-                countryIndex.put(c,countryIndex.size());
-            }
+//            if(!countryIndex.containsKey(c)){
+//                countryIndex.put(c,countryIndex.size());
+//            }
             if (!movieMap.containsKey(country[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(country[0]));
@@ -291,7 +377,7 @@ public class CalSimilarity {
 
     //初始化类型
     public void initializeGenres(String path){
-        genreIndex = new HashMap<>();
+        //genreIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String str : list) {
             String[] genres = str.split("\t");
@@ -302,9 +388,9 @@ public class CalSimilarity {
             else {
                 g = genres[1];
             }
-            if(!genreIndex.containsKey(g)){
-                genreIndex.put(g,genreIndex.size());
-            }
+//            if(!genreIndex.containsKey(g)){
+//                genreIndex.put(g,genreIndex.size());
+//            }
             if (!movieMap.containsKey(genres[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(genres[0]));
@@ -349,7 +435,7 @@ public class CalSimilarity {
     }
     //初始化标签
     public void initializeTags(String path){
-        tagIndex = new HashMap<>();
+        //tagIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String str : list) {
             String[] tags = str.split("\t");
@@ -360,9 +446,9 @@ public class CalSimilarity {
             else {
                 t = "n";
             }
-            if (!tagIndex.containsKey(t)) {
-                tagIndex.put(t,tagIndex.size());
-            }
+//            if (!tagIndex.containsKey(t)) {
+//                tagIndex.put(t,tagIndex.size());
+//            }
             if (!movieMap.containsKey(tags[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(tags[0]));
@@ -377,7 +463,7 @@ public class CalSimilarity {
     }
     //初始化演员
     public void initializeActors(String path){
-        actorIndex = new HashMap<>();
+        //actorIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String str : list) {
             String[] actors = str.split("\t");
@@ -388,9 +474,9 @@ public class CalSimilarity {
             else{
                 a = actors[1];
             }
-            if (!actorIndex.containsKey(a)){
-                actorIndex.put(a,actorIndex.size());
-            }
+//            if (!actorIndex.containsKey(a)){
+//                actorIndex.put(a,actorIndex.size());
+//            }
             if (!movieMap.containsKey(actors[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(actors[0]));
