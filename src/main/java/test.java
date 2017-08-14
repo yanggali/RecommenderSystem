@@ -13,12 +13,15 @@ import java.util.stream.Stream;
 public class test {
     public static Map<String, UserRecord> userRecordMap = new HashMap<>();
     public static void main(String[] args) {
-        Map<String,Integer> a = new HashMap<>();
-        Map<String,Integer> b = a;
-        b.put("1",1);
-        b.put("2",2);
-        System.out.println(b.size());
-
+        double[][] a={{1,2,3},{4,5,6}};
+        double[][] b = new double[a.length][a[0].length];
+        for (int i = 0;i < b.length;i++){
+            for (int j = 0;j < b[0].length;j++){
+                b[i][j]=a[i][j];
+            }
+        }
+        b[0][0]=7;
+        System.out.println(a[0][0]);
     }
     public void test(float f) {
         System.out.println("float");
@@ -88,7 +91,7 @@ public class test {
 //                    }
                     //System.out.println("allmap长度:"+allmap.size());
                     Iterator<Map.Entry<String, Float>> it = allmap.entrySet().iterator();
-                    Map<String, Float> ur = userRecordMap.get(user).getItems();
+                    Map<String, Double> ur = userRecordMap.get(user).getItems();
                     int hitcounts = 0, count = 0;
                     while (it.hasNext()) {
                         if (++count > recommendcount) break;
@@ -198,7 +201,7 @@ public class test {
                         Map<String,Float> itemtagmap = BayesScoring.getItemscoreByTag(user,temp/10);
                         Map<String,Float> sortmap = sortByValue(itemtagmap);
                         Iterator<Map.Entry<String, Float>> it = sortmap.entrySet().iterator();
-                        Map<String,Float> ur = userRecordMap.get(user).getItems();
+                        Map<String,Double> ur = userRecordMap.get(user).getItems();
                         int hitcounts = 0,count = 0;
                         while (it.hasNext())
                         {
@@ -252,7 +255,7 @@ public class test {
                         }
                         //被推荐的用户数
                         Map<String, Float> sortmap = sortByValue(itemtagmap);
-                        Map<String, Float> ur = userRecordMap.get(entry.getKey()).getItems();
+                        Map<String, Double> ur = userRecordMap.get(entry.getKey()).getItems();
                         int hitcounts = 0, count = 0;
                         for (Map.Entry<String, Float> resIt : sortmap.entrySet()) {
                             if (++count > recommendcount) break;
@@ -295,7 +298,7 @@ public class test {
 
                     Map<String,Float> itemmap = ItemSimilarity.getItemMap(user.getUserid(),temp/10);
                     if (itemmap.size() > 0) usercounts++;
-                    Map<String,Float> ur = user.getItems();
+                    Map<String,Double> ur = user.getItems();
                     int hitcounts = 0,count = 0;
                     for (Map.Entry<String, Float> entry : itemmap.entrySet()) {
                         if (++count > recommendcount) break;

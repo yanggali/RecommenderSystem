@@ -54,7 +54,7 @@ public class CalSimilarity {
         String movie_genres = System.getProperty("user.dir")+"/data/movieContent/movie_genres.dat";
         String movie_tags = System.getProperty("user.dir")+"/data/movieContent/movie_tags.dat";
         String movie_year = System.getProperty("user.dir")+"/data/movieContent/movie_year.dat";
-        String movie_keywords = System.getProperty("user.dir")+"/data/movieContent/movie_keywords.dat";
+        String movie_keywords = System.getProperty("user.dir")+"/data/movieContent/movie_title.dat";
         initializeCountry(movie_country);
         initializeActors(movie_actors);
         initializeDirector(movie_directors);
@@ -105,11 +105,11 @@ public class CalSimilarity {
         }
     }
     //根据list中id获取电影子集
-    public Map<String,Movie> getSubMap(Set<String> subMovieIdSet,Map<String,Movie> MovieMap){
+    public Map<String,Movie> getSubMap(Set<String> subMovieIdSet){
         Map<String,Movie> subMovieMap = new HashMap<>();
         for (String movieId : subMovieIdSet) {
-            if (MovieMap.containsKey(movieId)){
-                subMovieMap.put(movieId,MovieMap.get(movieId));
+            if (movieMap.containsKey(movieId)){
+                subMovieMap.put(movieId,movieMap.get(movieId));
             }
         }
         return subMovieMap;
@@ -138,21 +138,7 @@ public class CalSimilarity {
             movieToIndex.put(line.split(" ")[0],Integer.parseInt(line.split(" ")[1]));
             indexToMovie.put(Integer.parseInt(line.split(" ")[1]),line.split(" ")[0]);
         }
-        List<String> fileList = FileIO.readFileByLines(filepath);
-        int len = fileList.size();
-        System.out.println(Runtime.getRuntime().totalMemory()/1000/1000);
-        System.out.println(Runtime.getRuntime().freeMemory()/1000/1000);
-        System.out.println("数组长度"+len);
-        movieSimMatrix = new float[len][len];
-        System.out.println("=====");
-        int i=0;
-        for (String line : fileList) {
-            String[] lineList = line.split(" ");
-            for (int j = 0;j < len;j++) {
-                movieSimMatrix[i][j] = Float.parseFloat(lineList[j]);
-            }
-            i++;
-        }
+        FileIO.fileToMatrix(filepath);
         int index1,index2,index3;
         index1 = movieToIndex.get("47");
         index2 = movieToIndex.get("4963");
@@ -166,20 +152,6 @@ public class CalSimilarity {
             simMap.put(indexToMovie.get(i),movieSimMatrix[movieToIndex.get(movieId)][i]);
         }
         return simMap;
-    }
-    //初始化物品特征矩阵
-    public void initialItemFeature(String itemFile) {
-        Map<String,Movie> subMovieMap = new HashMap<>();
-        List<String> fileList = FileIO.readFileByLines(itemFile);
-        for (String line : fileList) {
-            if (!subMovieMap.containsKey(line.split(" ")[0])){
-                subMovieMap.put(line.split(" ")[0],movieMap.get(line.split(" ")[0]));
-            }
-        }
-        //以上获取电影子集合
-
-        //初始化电影特征矩阵
-
     }
     /**
      * 初始化张量下标
@@ -314,36 +286,7 @@ public class CalSimilarity {
             }
         }
     }
-    //初始化年份
-    public void initialYear(String path){
-        //yearIndex = new HashMap<>();
-        List<String> list = FileIO.readFileByLines(path);
-        for (String str : list) {
-            String[] year = str.split("\t");
-            //初始化所有电影
-            if (!movieIndex.containsKey(year[0])){
-                movieIndex.put(year[0],movieIndex.size());
-            }
-            String c;
-            if (year.length <= 1){
-                c = "n";
-            }else {
-                c = year[1];
-            }
-//            if(!yearIndex.containsKey(c)){
-//                yearIndex.put(c,yearIndex.size());
-//            }
-            if (!movieMap.containsKey(year[0])){
-                Movie mv = new Movie();
-                mv.setMovieId(Integer.parseInt(year[0]));
-                mv.setCountry(c);
-                movieMap.put(year[0],mv);
-            }else {
-                movieMap.get(year[0]).setCountry(c);
 
-            }
-        }
-    }
     //初始化国家
     public void initializeCountry(String path){
         //countryIndex = new HashMap<>();
@@ -405,13 +348,13 @@ public class CalSimilarity {
     }
     //初始化年份
     public void initializeYear(String path){
-        yearToIndex = new HashMap<>();
+        //yearToIndex = new HashMap<>();
         List<String> list = FileIO.readFileByLines(path);
         for (String line : list) {
             String[] strs = line.split("\t");
-            if (!yearToIndex.containsKey(strs[1])) {
-                yearToIndex.put(strs[1],yearToIndex.size());
-            }
+//            if (!yearToIndex.containsKey(strs[1])) {
+//                yearToIndex.put(strs[1],yearToIndex.size());
+//            }
             if (!movieMap.containsKey(strs[0])){
                 Movie mv = new Movie();
                 mv.setMovieId(Integer.parseInt(strs[0]));
@@ -425,12 +368,26 @@ public class CalSimilarity {
     }
     //初始化关键词
     private void initializeKeywords(String path){
-        List<String> stopwords = FileIO.readFileByLines(System.getProperty("user.dir")+"/data/movieContent/stopwords.dat");
-        keywordToIndex = new HashMap<>();
+        List<String> stopwords = FileIO.readFileByLines(System.getProperty("user.dir")+"/data/others/stopwords.dat");
         List<String> list = FileIO.readFileByLines(path);
         for (String line : list) {
-            String[] strs = line.split(" ");
-
+            String[] strs = line.split("\t");
+            String[] keywords = strs[1].split(" ");
+            List<String> keywordsList = new ArrayList<>();
+            for (String keyword : keywords) {
+                if (!stopwords.contains(keyword.toLowerCase())){
+                    keywordsList.add(keyword.toLowerCase());
+                }
+            }
+            if (!movieMap.containsKey(strs[0])){
+                Movie mv = new Movie();
+                mv.setMovieId(Integer.parseInt(strs[0]));
+                mv.setKeywords(keywordsList);
+                movieMap.put(strs[0],mv);
+            }
+            else {
+                movieMap.get(strs[0]).setKeywords(keywordsList);
+            }
         }
     }
     //初始化标签
@@ -488,6 +445,149 @@ public class CalSimilarity {
                 movieMap.get(actors[0]).getActors().add(actors[1]);
             }
         }
+    }
+
+    /**
+     * 初始化电影特征矩阵
+     * @param subMovieMap
+     */
+    public int[][] initialItemFeatureMatrix(Map<String,Movie> subMovieMap,int type){
+        Map<String,Integer> featureToIndex = new HashMap<>();
+        StringBuilder featureToIndexStr = new StringBuilder();
+        Map<String, Integer> featureTimes = new HashMap<>();
+        //结合多个特征（）
+        if (type == 0){
+
+        }
+        //特征是关键词
+        if (type == 1){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String keyword : movieEntry.getValue().getKeywords()) {
+                    if (!featureTimes.containsKey(keyword)){
+                        featureTimes.put(keyword,1);
+                    }
+                    else {
+                        featureTimes.put(keyword,featureTimes.get(keyword)+1);
+                    }
+                }
+            }
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String keyword : movieEntry.getValue().getKeywords()) {
+                    if (!featureToIndex.containsKey(keyword)&&featureTimes.get(keyword) > 0){
+                        featureToIndexStr.append(keyword+" "+featureToIndex.size()+"\n");
+                        featureToIndex.put(keyword,featureToIndex.size());
+                        //System.out.println(genre);
+                    }
+                }
+            }
+            System.out.println("一共有关键词："+featureToIndex.size());
+        }
+        //特征是类型词
+        if (type == 2){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String genre : movieEntry.getValue().getGeneres()) {
+                    if (!featureToIndex.containsKey(genre)){
+                        featureToIndexStr.append(genre+" "+featureToIndex.size()+"\n");
+                        featureToIndex.put(genre,featureToIndex.size());
+                    }
+                    //System.out.println(genre);
+                }
+            }
+            System.out.println("一共有类型词："+featureToIndex.size());
+        }
+        //特征是year
+        if (type == 3){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                String year = movieEntry.getValue().getYear();
+                if (!featureToIndex.containsKey(year)){
+                    featureToIndexStr.append(year+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(year,featureToIndex.size());
+
+                    //System.out.println(genre);
+                }
+            }
+            System.out.println("一共有年份："+featureToIndex.size());
+        }
+        //特征是国家
+        if (type == 4){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                String country = movieEntry.getValue().getCountry();
+                if (!featureToIndex.containsKey(country)){
+                    featureToIndexStr.append(country+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(country,featureToIndex.size());
+
+                    //System.out.println(genre);
+                }
+            }
+            System.out.println("一共有国家："+featureToIndex.size());
+        }
+        //特征是导演
+        if (type == 5){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                String director = movieEntry.getValue().getDirector();
+                if (!featureToIndex.containsKey(director)){
+                    featureToIndexStr.append(director+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(director,featureToIndex.size());
+
+                    //System.out.println(genre);
+                }
+            }
+            System.out.println("一共有导演："+featureToIndex.size());
+        }
+        //特征是演员
+        if (type == 6){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String actor : movieEntry.getValue().getActors()) {
+                    if (!featureTimes.containsKey(actor)){
+                        featureTimes.put(actor,1);
+                    }
+                    else {
+                        featureTimes.put(actor,featureTimes.get(actor)+1);
+                    }
+                }
+            }
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String actor : movieEntry.getValue().getActors()) {
+                    if (!featureToIndex.containsKey(actor)&&featureTimes.get(actor) > 5){
+                        featureToIndexStr.append(actor+" "+featureToIndex.size()+"\n");
+                        featureToIndex.put(actor,featureToIndex.size());
+                        //System.out.println(genre);
+                    }
+                }
+            }
+            System.out.println("一共有演员："+featureToIndex.size());
+        }
+        //特征是标签
+        if (type == 7){
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String tag : movieEntry.getValue().getTags()) {
+                    if (!featureToIndex.containsKey(tag)){
+                        featureToIndexStr.append(tag+" "+featureToIndex.size()+"\n");
+                        featureToIndex.put(tag,featureToIndex.size());
+                    }
+                    //System.out.println(genre);
+                }
+            }
+            System.out.println("一共有标签："+featureToIndex.size());
+        }
+        String featureToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/featureToIndex.dat";
+        FileIO.writeToFile(featureToIndexPath,featureToIndexStr.toString());
+        int[][] itemFeatureMatrix = new int[subMovieMap.size()][featureToIndex.size()];
+        String movieToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/movieToIndex.dat";
+        List<String> movieIndexList = FileIO.readFileByLines(movieToIndexPath);
+        Map<String,Integer> movieToIndex = new HashMap<>();
+        for (String line : movieIndexList) {
+            movieToIndex.put(line.split(" ")[0], Integer.parseInt(line.split(" ")[1]));
+        }
+        for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+            for (String feature : movieEntry.getValue().getActors()) {
+                if (featureToIndex.containsKey(feature)){
+                    itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
+                }
+            }
+//            itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(movieEntry.getValue().getDirector())] = 1;
+        }
+        return itemFeatureMatrix;
     }
 //    //计算相似度矩阵
 //    public static void calSimMatrix(int length){

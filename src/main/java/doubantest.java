@@ -122,7 +122,7 @@ public class doubantest {
                         allmap.put(entry.getKey(),entry.getValue());
                     }
                     Iterator<Map.Entry<String, Float>> it = allmap.entrySet().iterator();
-                    Map<String, Float> ur = userRecordMap.get(user).getItems();
+                    Map<String, Double> ur = userRecordMap.get(user).getItems();
                     int hitcounts = 0, count = 0;
                     while (it.hasNext()) {
                         if (++count > recommendcount) break;
@@ -171,7 +171,7 @@ public class doubantest {
                     usercounts++;
                     Map<String,Float> itemtagmap = sortByValue(BayesScoring.getItemscoreByTag(user,temp/10));
                     Iterator<Map.Entry<String, Float>> it = itemtagmap.entrySet().iterator();
-                    Map<String,Float> ur = userRecordMap.get(user).getItems();
+                    Map<String,Double> ur = userRecordMap.get(user).getItems();
                     int hitcounts = 0,count = 0;
                     while (it.hasNext())
                     {
@@ -222,7 +222,7 @@ public class doubantest {
                     //被推荐的用户数
                     resUserCount++;
                     Map<String, Float> sortmap = sortByValue(itemtagmap);
-                    Map<String, Float> ur = userRecordMap.get(user).getItems();
+                    Map<String, Double> ur = userRecordMap.get(user).getItems();
                     int hitcounts = 0, count = 0;
                     for (Map.Entry<String, Float> resIt : sortmap.entrySet()) {
                         if (++count > recommendcount) break;

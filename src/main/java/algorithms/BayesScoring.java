@@ -24,7 +24,7 @@ public class BayesScoring {
     public static Map<String,List<String>> itemListMap = new HashMap<>();
     public static float bookAvgRate = 0,artistAvgRate = 0,avgRate = 0;
     //获取用户物品评分矩阵(物品*用户)
-    public static float[][] getRateMatrix(Map<String, UserRecord> subUserMap, String userToIndexPath, String movieToIndexPath) {
+    public static double[][] getRateMatrix(Map<String, UserRecord> subUserMap, String userToIndexPath, String movieToIndexPath) {
         Map<String,Integer> userToIndex = new HashMap<>();
         Map<String,Integer> movieToIndex = new HashMap<>();
         StringBuilder strUser = new StringBuilder();
@@ -46,38 +46,44 @@ public class BayesScoring {
         FileIO.writeToFile(userToIndexPath,strUser.toString());
         FileIO.writeToFile(movieToIndexPath,strMovie.toString());
         //初始化评分矩阵(物品-用户)
-        float[][] rateMatrix = new float[movieToIndex.size()][userToIndex.size()];
+        double[][] rateMatrix = new double[movieToIndex.size()][userToIndex.size()];
         for (Map.Entry<String, UserRecord> userRecordEntry : subUserMap.entrySet()) {
-            for (Map.Entry<String, Float> itemRate : userRecordEntry.getValue().getItems().entrySet()) {
+            for (Map.Entry<String, Double> itemRate : userRecordEntry.getValue().getItems().entrySet()) {
                 rateMatrix[movieToIndex.get(itemRate.getKey())][userToIndex.get(userRecordEntry.getKey())] = itemRate.getValue();
             }
         }
         return rateMatrix;
     }
     //计算物品相似度矩阵
-    public static double[][] getItemSimMatrix(float[][] itemUserMatrix){
+    public static double[][] getItemSimMatrix(double[][] itemUserMatrix){
         double[][] simMatrix = new double[itemUserMatrix.length][itemUserMatrix.length];
         for (int i = 0;i < itemUserMatrix.length;i++){
             for (int j =0; j < itemUserMatrix.length;j++){
                 if (i < j){
                     simMatrix[i][j] = calCosineSim(itemUserMatrix[i],itemUserMatrix[j]);
+                    simMatrix[j][i] = simMatrix[i][j];
+                }
+                else if (i==j){
+                    simMatrix[i][j]=1;
                 }
             }
         }
         return simMatrix;
     }
     //计算向量相似度(余弦相似度)
-    public static double calCosineSim(float[] vec1,float[] vec2){
-        float sum = 0,vec1sum = 0,vec2sum = 0;
+    public static double calCosineSim(double[] vec1,double[] vec2){
+        double sum = 0,vec1sum = 0,vec2sum = 0;
         for (int i =0 ;i < vec1.length;i++){
             sum += vec1[i] * vec2[i];
             vec1sum += vec1[i] * vec1[i];
             vec2sum += vec2[i] * vec2[i];
         }
-        double sum1 = Double.parseDouble(String.valueOf(vec1sum));
-        double sum2 = Double.parseDouble(String.valueOf(vec2sum));
-        //return 1;
-        return sum/(Math.sqrt(sum1)*Math.sqrt(sum2));
+        if (vec1sum!=0&&vec2sum!=0){
+            double sum1 = Double.parseDouble(String.valueOf(vec1sum));
+            double sum2 = Double.parseDouble(String.valueOf(vec2sum));
+            return sum/(Math.sqrt(sum1)*Math.sqrt(sum2));
+        }
+        else return 0;
     }
     public static Map<String, UserRecord> getUsermap(float ratio) {
         if (ratio == 1f) return usermap;
@@ -640,17 +646,17 @@ public class BayesScoring {
      * @param userid 待推荐用户id
      * @return    user-item-user-items之后得到的物品及评分集合
      */
-    public static Map<String,Float> getItemsScore(String userid)
+    public static Map<String,Double> getItemsScore(String userid)
     {
-        Map<String, Float> itemMap = new HashMap<>();
+        Map<String, Double> itemMap = new HashMap<>();
         UserRecord userRecord = usermap.get(userid);
-        Map<String,Float> items = userRecord.getItems();
-        Iterator<Map.Entry<String,Float>> it = items.entrySet().iterator();
+        Map<String,Double> items = userRecord.getItems();
+        Iterator<Map.Entry<String,Double>> it = items.entrySet().iterator();
         while (it.hasNext())
         {
-            Map.Entry<String, Float> entry = it.next();
+            Map.Entry<String, Double> entry = it.next();
             //计算该物品的评分
-            float useritscore = entry.getValue()*itemscore.get(entry.getKey());
+            double useritscore = entry.getValue()*itemscore.get(entry.getKey());
             for (UserRecord user:usermap.values())
             {
                 if (!user.equals(userid)&&user.isContainItem(entry.getKey()))
@@ -667,7 +673,7 @@ public class BayesScoring {
                         }
                         else
                         {
-                            float score = itemMap.get(otherit)+otheritscore*useritscore;
+                            double score = itemMap.get(otherit)+otheritscore*useritscore;
                             System.out.println("计算已存在物品"+otherit+"的得分为:"+score);
                             itemMap.put(otherit,score);
                         }
@@ -760,11 +766,11 @@ public class BayesScoring {
             {
                 UserRecord userRecord = new UserRecord();
                 userRecord.setUserid(record[0]);
-                userRecord.addItem(record[1],Float.valueOf(record[2]));
+                userRecord.addItem(record[1],Double.valueOf(record[2]));
             }
             else
             {
-                usermap.get(record[0]).addItem(record[1],Float.valueOf(record[2]));
+                usermap.get(record[0]).addItem(record[1],Double.valueOf(record[2]));
 
             }
 

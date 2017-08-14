@@ -8,10 +8,13 @@ import java.util.*;
  */
 public class UserRecord {
     String userid;
-    Map<String,Float> items;  //用户阅读记录及对应评分
+    Map<String,Double> items;  //用户阅读记录及对应评分
     Map<String,Integer> tags;  //用户打过的标签及次数
     Set<ItemTag> itemTags;    //用户打过的itemtag
     Map<String,List<String>> itemTagList;   //用户物品及对应打的标签
+
+    Map<String,Double> trainItems; //训练集
+    Map<String,Double> testItems; //测试集
 
     public UserRecord() {
         items = new HashMap<>();
@@ -19,13 +22,24 @@ public class UserRecord {
         itemTags = new HashSet<>();
     }
 
-    public UserRecord(String userid, Map<String,Float> items, Map<String,Integer> tags, Set<ItemTag> itemTags) {
+    public UserRecord(String userid, Map<String,Double> items, Map<String,Integer> tags, Set<ItemTag> itemTags) {
         this.userid = userid;
         this.items = items;
         this.tags = tags;
         this.itemTags = itemTags;
     }
-
+    public void setTrainItems(Map<String,Double> items){
+        trainItems = items;
+    }
+    public void setTestItems(Map<String,Double> items){
+        testItems = items;
+    }
+    public Map<String,Double> getTrainItems(){
+        return trainItems;
+    }
+    public Map<String,Double> getTestItems(){
+        return testItems;
+    }
     public Map<String, List<String>> getItemTagList() {
         return itemTagList;
     }
@@ -41,16 +55,16 @@ public class UserRecord {
     public void setUserid(String userid) {
         this.userid = userid;
     }
-    public void addItem(String item,Float rate)
+    public void addItem(String item,Double rate)
     {
         this.items.put(item,rate);
     }
 
-    public Map<String, Float> getItems() {
+    public Map<String, Double> getItems() {
         return items;
     }
 
-    public void setItems(Map<String, Float> items) {
+    public void setItems(Map<String, Double> items) {
         this.items = items;
     }
 

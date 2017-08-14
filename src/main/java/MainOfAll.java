@@ -1,5 +1,7 @@
+import Jama.Matrix;
 import algorithms.BayesScoring;
 import algorithms.ItemSimilarity;
+import model.Movie;
 import structure.UserRecord;
 import utils.CalSimilarity;
 import utils.FileIO;
@@ -15,6 +17,9 @@ import java.util.stream.Stream;
 public class MainOfAll {
     public static Map<String, UserRecord> userRecordMap = new HashMap<>();
     public static Map<String , UserRecord> subUserRecordMap = new HashMap<>();
+    public static Map<String,Integer> userToIndex;
+    public static Map<String,Integer> itemToIndex;
+    public static double[][] rateMatrix;
     public static Map<String,Map<String,Float>> recListMap = new HashMap<>();
     public static String rateFile = System.getProperty("user.dir")+"/src/main/resources/doubanset/user_rates.dat";
     public static String tagFile = System.getProperty("user.dir")+"/src/main/resources/doubanset/user_tags.dat";
@@ -46,9 +51,175 @@ public class MainOfAll {
 
         userRecordMap = BayesScoring.getUsermap((float) 1);
         subUserRecordMap = getSubUserMap(100,110,userRecordMap);
+        matrixPrepareWork();
+
+        //recommendByMatrix();
+        //recommendWay(2);
+        //recommendByAll(1);
+
+
+    }
+
+    public static void recommendByMatrix(){
+        //用矩阵法求解
+        //获取rateMatrix
+        double[][] rateMatrix = FileIO.fileToMatrix(System.getProperty("user.dir") + "/data/matrix/rateMatrix.dat");
+
+        //获取itemToIndex
+        itemToIndex = FileIO.getMap(System.getProperty("user.dir")+"/data/movieIndex/movieToIndex.dat");
+        userToIndex = FileIO.getMap(System.getProperty("user.dir")+"/data/movieIndex/userToIndex.dat");
+        Map<Integer,String> indexToItem = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : itemToIndex.entrySet()) {
+            indexToItem.put(entry.getValue(),entry.getKey());
+        }
+        for (int recNum = 10;recNum <= 10;recNum++){
+            int times=0;
+            double RMSE = 0;
+            while (times < 5){
+                double[][] tempRateMatrix = new double[rateMatrix.length][rateMatrix[0].length];
+                for (int i = 0;i < rateMatrix.length;i++){
+                    for (int j = 0;j < rateMatrix[0].length;j++){
+                        tempRateMatrix[i][j] = rateMatrix[i][j];
+                    }
+                }
+                //1 对每一个用户抽取训练集（tempRateMatrix）和测试集（testMap）
+                for (Map.Entry<String, UserRecord> userRecordEntry : subUserRecordMap.entrySet()) {
+                    int totallen = userRecordEntry.getValue().getItems().size();
+                    Set<String> recordSet = userRecordEntry.getValue().getItems().keySet();
+                    String[] recordArray = recordSet.toArray(new String[recordSet.size()]);
+                    Map<String,Double> testMap = new HashMap<>();
+                    Map<String,Double> trainMap = new HashMap<>();
+                    for (int i = 0;i < totallen;i++){
+                        if (i >= totallen*times/5&&i<totallen*(times+1)/5){
+                            tempRateMatrix[itemToIndex.get(recordArray[i])][userToIndex.get(userRecordEntry.getKey())] = 0;
+                            testMap.put(recordArray[i], userRecordEntry.getValue().getItems().get(recordArray[i]));
+                        }
+                        else {
+                            trainMap.put(recordArray[i],userRecordEntry.getValue().getItems().get(recordArray[i]));
+                        }
+                    }
+                    userRecordEntry.getValue().setTestItems(testMap);
+                    userRecordEntry.getValue().setTrainItems(trainMap);
+                }
+                //计算所有物品的平均值
+                double[] avgRate = getAvgRate(tempRateMatrix);
+
+                //2 进行实验（基于内容）
+                Matrix S,F,C,I,SS;
+                //2.1 初始化相似度矩阵S(1570*1570)和物品特征矩阵F(1570*19)
+                double[][] simMatrix = BayesScoring.getItemSimMatrix(tempRateMatrix);
+
+                S = new Matrix(simMatrix);
+                F = new Matrix(FileIO.fileToMatrix(System.getProperty("user.dir") + "/data/matrix/itemFeatureMatrix.dat"));
+                //2.2 计算特征间相似度矩阵C即填充后的物品相似度矩阵SS
+                double[][] eye = new double[F.getColumnDimension()][F.getColumnDimension()];
+                for (int i=0;i < eye.length;i++){
+                    for (int j =0;j < eye.length;j++){
+                        if (i==j)
+                            eye[i][j] = 10;
+                    }
+                }
+                I = new Matrix(eye);
+                //C=(F'F+lamdaI)^-1F'SF(F'F+lamdaI)^-1
+                C = (F.transpose().times(F).plus(I)).inverse().times(F.transpose()).times(S).times(F)
+                        .times((F.transpose().times(F).plus(I)).inverse());
+                SS = F.times(C).times(F.transpose());
+                double avgRMSE = 0;
+                int nonRec = 0;
+                //计算RMSE
+                for (Map.Entry<String, UserRecord> userRecordEntry : subUserRecordMap.entrySet()) {
+                    Set<Integer> trainIndexSet = new HashSet<>();
+                    for (String s : userRecordEntry.getValue().getTrainItems().keySet()) {
+                        trainIndexSet.add(itemToIndex.get(s));
+                    }
+                    Map<String,Double> recMap = new HashMap<>();
+                    //对于每一个物品计算它的评分
+                    for (Map.Entry<String, Double> recordEntry : userRecordEntry.getValue().getTestItems().entrySet()) {
+                        int i = itemToIndex.get(recordEntry.getKey());
+                        //计算i的得分:找到该用户已评论过的且与i最相似的top-k个物品
+                        Map<Integer,Double> indexSim = new HashMap<>();
+                        for (int j = 0;j < SS.getColumnDimension();j++){
+                            if (trainIndexSet.contains(j)){
+                                indexSim.put(j,SS.get(i,j));
+                            }
+                        }
+                        indexSim = ItemSimilarity.sortByValue(indexSim,1);
+                        double sum1 = 0,sum2 = 0,rate = 0;
+                        int  k = 0;
+                        for (Map.Entry<Integer, Double> entry : indexSim.entrySet()) {
+                            if (k++ < 10){
+                                sum1 += entry.getValue() * (tempRateMatrix[entry.getKey()][userToIndex.get(userRecordEntry.getKey())] - avgRate[entry.getKey()]);
+                                sum2 += entry.getValue();
+                            }
+                            else break;
+                        }
+                        rate = sum1 / sum2 + avgRate[i];
+                        //if (rate > 5) System.out.println("sum1:"+sum1+" sum2:"+sum2+" avgRate[i]:"+avgRate[i]);
+                        recMap.put(indexToItem.get(i),rate);
+                    }
+                    recMap = ItemSimilarity.sortByValue(recMap,1);
+                    //计算RMSE
+                    double rmse = 0;
+                    //测试集
+                    Map<String,Double> testMap = userRecordEntry.getValue().getTestItems();
+                    //推荐集
+                    int n = 0;
+                    for (Map.Entry<String, Double> recEntry : recMap.entrySet()) {
+                        if (recEntry.getValue() >= 1){
+                            n++;
+                            rmse += (recEntry.getValue() - testMap.get(recEntry.getKey()))*(recEntry.getValue() - testMap.get(recEntry.getKey()));
+                        }
+                        else continue;
+                    }
+                    if (n > 0){
+                        rmse = Math.sqrt(rmse/n);
+                        avgRMSE += rmse;
+                    }
+                    else nonRec++;
+                }
+                avgRMSE /= (subUserRecordMap.size()-nonRec);
+                RMSE += avgRMSE;
+                System.out.println("第"+times+"次平均绝对误差："+avgRMSE);
+                //推荐
+
+                times++;
+            }
+            System.out.println("全部平均误差为："+RMSE/5);
+        }
+
+    }
+    //获取每一个物品的平均值
+    public static double[] getAvgRate(double[][] rateMatrix){
+        double[] avgRate = new double[rateMatrix.length];
+        int[] nonZeros = new int[rateMatrix.length];
+        for (int i = 0;i < rateMatrix.length;i++){
+            for (int j = 0;j < rateMatrix[0].length;j++){
+                if (rateMatrix[i][j]!=0){
+                    avgRate[i]+=rateMatrix[i][j];
+                    nonZeros[i]++;
+                }
+            }
+        }
+        for (int i = 0;i < rateMatrix.length;i++){
+            if (nonZeros[i]!=0)
+                avgRate[i]/=nonZeros[i];
+        }
+        return avgRate;
+    }
+
+    /**
+     * 将电影子集id对应index存入到文件
+     * 将用户子集id对应index存入到文件
+     * 将用户电影评分矩阵存入到文件
+     * 将电影相似度矩阵写入文件
+     * 将物品特征矩阵写入文件中
+     */
+    public static void matrixPrepareWork(){
         String movieToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/movieToIndex.dat";
         String userToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/userToIndex.dat";
-        float[][] rateMatrix = BayesScoring.getRateMatrix(subUserRecordMap,userToIndexPath,movieToIndexPath);
+        String rateMatrixPath = System.getProperty("user.dir")+"/data/matrix/rateMatrix.dat";
+        double[][] rateMatrix = BayesScoring.getRateMatrix(subUserRecordMap,userToIndexPath,movieToIndexPath);
+        FileIO.matrixToFile(rateMatrix,rateMatrixPath);
         double[][] itemSimMatrix = BayesScoring.getItemSimMatrix(rateMatrix);
         Set<String> movieSet = new HashSet<>();
         for (Map.Entry<String, UserRecord> entry : subUserRecordMap.entrySet()) {
@@ -61,16 +232,13 @@ public class MainOfAll {
         String simMatrixPath = System.getProperty("user.dir")+"/data/matrix/simMatrix.dat";
         FileIO.matrixToFile(itemSimMatrix, simMatrixPath);
 
-        //将物品特征矩阵写入文件
-
-//        cs = new CalSimilarity();
-//        //cs.initialMovieSim(movieSet);
-//        cs.initialMovieSim(System.getProperty("user.dir")+"/data/movieToIndex(100_130).dat",System.getProperty("user.dir")+"/data/movieContent/sim(100_130).dat");
-//        System.out.println("内容相似度计算结束");
-//
-//        recommendWay(1);
-        //recommendByAll(1);
-
+        //将物品特征矩阵写入文件中
+        cs = new CalSimilarity();
+        Map<String, Movie> subMovieMap = cs.getSubMap(movieSet);
+        int[][] itemfeaturematrix = cs.initialItemFeatureMatrix(subMovieMap,1);
+        System.out.println(itemfeaturematrix.length+" "+itemfeaturematrix[0].length);
+        String itemfeaturepath = System.getProperty("user.dir")+"/data/matrix/itemFeatureMatrix.dat";
+        FileIO.matrixToFile(itemfeaturematrix,itemfeaturepath);
     }
     public static Map<String, UserRecord> getSubUserMap(int mincount,int maxcount,Map<String, UserRecord> allMap){
         Map<String, UserRecord> subMap = new HashMap<>();
@@ -81,20 +249,31 @@ public class MainOfAll {
         }
         return subMap;
     }
-    public static void recommendWay(int type){
-        for(int recNum= 10; recNum <= 25;recNum+=5){
+
+    public static void recommendWay(int type) {
+        //对于基于矩阵的方法，要初始化用户对应index，物品对应index
+        if (type == 2) {
+            String userToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/userToIndex.dat";
+            String itemToIndexPath = System.getProperty("user.dir")+"/data/movieIndex/movieToIndex.dat";
+            userToIndex = FileIO.getMap(userToIndexPath);
+            itemToIndex = FileIO.getMap(itemToIndexPath);
+            //从文件中读取用户物品评分矩阵
+            String ratePath = System.getProperty("user.dir")+"/data/matrix/rateMatrix_v2.dat";
+            rateMatrix = FileIO.fileToMatrix(ratePath);
+        }
+        for (int recNum = 10; recNum <= 100; recNum += 10) {
             //System.out.println("推荐数："+recNum);
             long initialTime = System.currentTimeMillis();
             float avgPrecision = 0;
             for (Map.Entry<String, UserRecord> userEntry : subUserRecordMap.entrySet()) {
-                float userPrecision = getPrecision(userEntry.getValue(),type,recNum);
+                float userPrecision = getPrecision(userEntry.getValue(), type, recNum);
                 //System.out.println("用户"+userEntry.getKey()+"的准确率为："+userPrecision);
                 avgPrecision += userPrecision;
             }
             avgPrecision /= subUserRecordMap.size();
-            System.out.println("推荐数为："+recNum+"时所有用户的准确率为："+avgPrecision);
+            System.out.println("推荐数为：" + recNum + "时所有用户的准确率为：" + avgPrecision);
             long endTime = System.currentTimeMillis();
-            System.out.println("总共用时"+((endTime-initialTime)/1000)+"秒");
+            System.out.println("总共用时" + ((endTime - initialTime) / 1000) + "秒");
         }
 
     }
@@ -103,7 +282,7 @@ public class MainOfAll {
         String[] userItemArray = ur.getItems().keySet().toArray(new String[0]);
         int len=userItemArray.length;
         float avgPrecision = 0;
-        for(int i=0;i < len;i+=len/5){
+        for(int i=0;i < 4*len/5;i+=len/5){
             Set<String> trainItemSet = new HashSet<>();
             Set<String> testItemSet = new HashSet<>();
             for (int j = 0; j < len; j++) {
@@ -114,6 +293,7 @@ public class MainOfAll {
                     trainItemSet.add(userItemArray[j]);
                 }
             }
+
             Map<String,Float> itemScoreMap;
             //基于矢量的内容推荐
             if (type == 1){
@@ -129,6 +309,15 @@ public class MainOfAll {
                             itemScoreMap.put(itemEntry.getKey(),itemScoreMap.get(itemEntry.getKey())+itemSimMap.get(itemEntry.getKey()));
                         }
                     }
+                }
+            }
+            //根据矩阵方法推荐
+            else if (type == 2){
+
+                double[] rateItems = rateMatrix[userToIndex.get(ur.getUserid())];
+                itemScoreMap = new HashMap<>();
+                for (Map.Entry<String, Integer> entry : itemToIndex.entrySet()) {
+                    itemScoreMap.put(entry.getKey(),(float)rateItems[entry.getValue()]);
                 }
             }
             //混合推荐
@@ -148,14 +337,19 @@ public class MainOfAll {
                     }
                 }
             }
-            itemScoreMap = ItemSimilarity.sortByValue(itemScoreMap,2);
+            itemScoreMap = ItemSimilarity.sortByValue(itemScoreMap,1);
             Set<String> recommendSet = new HashSet<>();
             Stream<Map.Entry<String,Float>> itemStream1 = itemScoreMap.entrySet().stream();
             recommendSet.addAll(itemStream1.limit(recNum).map(e->e.getKey()).collect(Collectors.toSet()));
+
+            recommendSet.removeAll(trainItemSet);
+            int num = recommendSet.size();
             recommendSet.retainAll(testItemSet);
-            avgPrecision += recommendSet.size();
+            if (num != 0){
+                avgPrecision += recommendSet.size()/num;
+            }
         }
-        avgPrecision /= (5 * recNum);
+        avgPrecision /= 5;
         return avgPrecision;
 
     }
