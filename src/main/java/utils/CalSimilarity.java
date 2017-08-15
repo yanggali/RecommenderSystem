@@ -455,9 +455,26 @@ public class CalSimilarity {
         Map<String,Integer> featureToIndex = new HashMap<>();
         StringBuilder featureToIndexStr = new StringBuilder();
         Map<String, Integer> featureTimes = new HashMap<>();
-        //结合多个特征（）
+        //结合多个特征（年份，国家，导演，演员，类型，关键词）
         if (type == 0){
-
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                String year = movieEntry.getValue().getYear();
+                String country = movieEntry.getValue().getCountry();
+                String director = movieEntry.getValue().getDirector();
+                if (!featureToIndex.containsKey(year)){
+                    featureToIndexStr.append(year+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(year,featureToIndex.size());
+                }
+                if (!featureToIndex.containsKey(country)){
+                    featureToIndexStr.append(country+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(country,featureToIndex.size());
+                }
+                if (!featureToIndex.containsKey(director)){
+                    featureToIndexStr.append(director+" "+featureToIndex.size()+"\n");
+                    featureToIndex.put(director,featureToIndex.size());
+                }
+            }
+            System.out.println("一共有特征:"+featureToIndex.size());
         }
         //特征是关键词
         if (type == 1){
@@ -473,7 +490,7 @@ public class CalSimilarity {
             }
             for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
                 for (String keyword : movieEntry.getValue().getKeywords()) {
-                    if (!featureToIndex.containsKey(keyword)&&featureTimes.get(keyword) > 0){
+                    if (!featureToIndex.containsKey(keyword)&&featureTimes.get(keyword) > 2){
                         featureToIndexStr.append(keyword+" "+featureToIndex.size()+"\n");
                         featureToIndex.put(keyword,featureToIndex.size());
                         //System.out.println(genre);
@@ -561,7 +578,17 @@ public class CalSimilarity {
         if (type == 7){
             for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
                 for (String tag : movieEntry.getValue().getTags()) {
-                    if (!featureToIndex.containsKey(tag)){
+                    if (!featureTimes.containsKey(tag)){
+                        featureTimes.put(tag,1);
+                    }
+                    else {
+                        featureTimes.put(tag,featureTimes.get(tag)+1);
+                    }
+                }
+            }
+            for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
+                for (String tag : movieEntry.getValue().getTags()) {
+                    if (!featureToIndex.containsKey(tag)&&featureTimes.get(tag) > 5){
                         featureToIndexStr.append(tag+" "+featureToIndex.size()+"\n");
                         featureToIndex.put(tag,featureToIndex.size());
                     }
@@ -580,12 +607,20 @@ public class CalSimilarity {
             movieToIndex.put(line.split(" ")[0], Integer.parseInt(line.split(" ")[1]));
         }
         for (Map.Entry<String, Movie> movieEntry : subMovieMap.entrySet()) {
-            for (String feature : movieEntry.getValue().getActors()) {
-                if (featureToIndex.containsKey(feature)){
-                    itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
-                }
-            }
-//            itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(movieEntry.getValue().getDirector())] = 1;
+//            for (String feature : movieEntry.getValue().getTags()) {
+//                if (featureToIndex.containsKey(feature)){
+//                    itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
+//                }
+//            }
+            String feature;
+            feature = movieEntry.getValue().getYear();
+            itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
+
+            feature = movieEntry.getValue().getCountry();
+            itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
+
+            feature = movieEntry.getValue().getDirector();
+            itemFeatureMatrix[movieToIndex.get(movieEntry.getKey())][featureToIndex.get(feature)] = 1;
         }
         return itemFeatureMatrix;
     }
